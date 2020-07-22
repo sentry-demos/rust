@@ -3,13 +3,14 @@ use std::env;
 use std::num::ParseIntError;
 use std::sync::Mutex;
 
+use actix_web::http;
+use actix_web::middleware::cors::Cors;
 use actix_web::{server, App, HttpRequest, HttpResponse, Json};
 use sentry::integrations::failure::capture_error as capture_failure_error;
 use sentry::protocol::value::to_value;
 use sentry::User;
 use sentry_actix::SentryMiddleware;
 use serde::{Deserialize, Serialize};
-
 
 lazy_static::lazy_static! {
     static ref HASHMAP: Mutex<HashMap<&'static str, u32>> = {
@@ -27,7 +28,7 @@ fn multiply_new(first_number_str: &str, second_number_str: &str) -> Result<i32, 
     Ok(first_number * second_number)
 }
 
-fn handled_new(_: ()) -> String {
+fn handled_new(_req: &HttpRequest) -> String {
     let first = "t";
     let second = "2";
     match multiply_new(first, second) {
@@ -120,9 +121,20 @@ fn main() {
     server::new(|| {
         App::new()
             .middleware(SentryMiddleware::new())
-            .resource("/handled_new", |r| r.get().with(handled_new))
-            .resource("/unhandled", |r| r.get().f(fakedatabseapp))
-            .resource("/checkout", |r| r.post().with(checkout))
+            .configure(|app| {
+                Cors::for_app(app)
+                    .allowed_origin("http://localhost:5000")
+                    .allowed_methods(vec!["GET", "POST"])
+                    .max_age(3600)
+                    .resource("/handled_new", |r| {
+                        r.method(http::Method::GET).f(handled_new)
+                    })
+                    .resource("/unhandled", |r| {
+                        r.method(http::Method::GET).f(fakedatabseapp)
+                    })
+                    .resource("/checkout", |r| r.method(http::Method::POST).with(checkout))
+                    .register()
+            })
     })
     .bind("127.0.0.1:3001")
     .unwrap()
