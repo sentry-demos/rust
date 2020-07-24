@@ -3,14 +3,15 @@ use std::env;
 use std::num::ParseIntError;
 use std::sync::Mutex;
 
-use actix_web::http;
-use actix_web::middleware::cors::Cors;
 use actix_web::{server, App, HttpRequest, HttpResponse, Json};
 use sentry::integrations::failure::capture_error as capture_failure_error;
 use sentry::protocol::value::to_value;
 use sentry::User;
 use sentry_actix::SentryMiddleware;
 use serde::{Deserialize, Serialize};
+use actix_web::middleware::cors::Cors;
+use actix_web::{http::StatusCode};
+
 
 lazy_static::lazy_static! {
     static ref HASHMAP: Mutex<HashMap<&'static str, u32>> = {
@@ -28,7 +29,7 @@ fn multiply_new(first_number_str: &str, second_number_str: &str) -> Result<i32, 
     Ok(first_number * second_number)
 }
 
-fn handled_new(_req: &HttpRequest) -> String {
+fn handled_new(_: ()) -> String {
     let first = "t";
     let second = "2";
     match multiply_new(first, second) {
@@ -63,9 +64,11 @@ struct CheckoutPayload {
     cart: Vec<Item>,
 }
 
-fn process_order(cart: &[Item]) -> String {
+
+
+fn process_order(cart: &[Item]) -> HttpResponse  {
     let mut map = HASHMAP.lock().unwrap();
-    println!("The entry for `0` is \"{:?}\".", map.get("foo"));
+    
 
     for cartitem in cart.iter() {
         match map.get_mut(cartitem.id.as_str()) {
@@ -81,17 +84,19 @@ fn process_order(cart: &[Item]) -> String {
                     scope.set_extra("inventory", to_value(&*map).unwrap());
                 });
 
+                
                 let message = format!("Not enough inventory for {}", cartitem.id);
+                println!("The entry for `0` is \"{:?}\".", message);
                 capture_failure_error(&failure::format_err!("Error: {}", message));
-                return message;
+                return HttpResponse::InternalServerError().content_type("text/plain").body("external service error");
             }
         }
     }
 
-    "Everything ok".to_string()
+    return HttpResponse::Ok().content_type("text/plain").body("Ok");
 }
 
-fn checkout(req: HttpRequest, body: Json<CheckoutPayload>) -> String {
+fn checkout(req: HttpRequest, body: Json<CheckoutPayload>) -> HttpResponse {
     sentry::configure_scope(|scope| {
         scope.set_user(Some(User {
             email: Some(body.email.clone()),
@@ -118,25 +123,25 @@ fn main() {
     let _guard =
         sentry::init("https://ef73d8aa7ac643d2b6f1d1e604d607eb@o87286.ingest.sentry.io/5250920");
 
-    server::new(|| {
-        App::new()
-            .middleware(SentryMiddleware::new())
-            .configure(|app| {
-                Cors::for_app(app)
-                    .allowed_origin("http://localhost:5000")
-                    .allowed_methods(vec!["GET", "POST"])
-                    .max_age(3600)
-                    .resource("/handled_new", |r| {
-                        r.method(http::Method::GET).f(handled_new)
-                    })
-                    .resource("/unhandled", |r| {
-                        r.method(http::Method::GET).f(fakedatabseapp)
-                    })
-                    .resource("/checkout", |r| r.method(http::Method::POST).with(checkout))
-                    .register()
-            })
-    })
-    .bind("127.0.0.1:3001")
-    .unwrap()
-    .run();
+        server::new(|| {
+            App::new()
+                .middleware(SentryMiddleware::new())
+                .configure(|app| {
+                    Cors::for_app(app)
+                        .allowed_origin("http://localhost:5000")
+                        .allowed_methods(vec!["GET", "POST"])
+                        .max_age(3600)
+                        .resource("/handled_new", |r| {
+                            r.get().with(handled_new)
+                        })
+                        .resource("/unhandled", |r| {
+                            r.get().f(fakedatabseapp)
+                        })
+                        .resource("/checkout", |r| r.post().with(checkout))
+                        .register()
+                })
+        })
+        .bind("127.0.0.1:3001")
+        .unwrap()
+        .run();
 }
