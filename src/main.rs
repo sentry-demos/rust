@@ -29,7 +29,7 @@ fn multiply_new(first_number_str: &str, second_number_str: &str) -> Result<i32, 
     Ok(first_number * second_number)
 }
 
-fn handled_new(_: ()) -> String {
+fn handled(_: ()) -> String {
     let first = "t";
     let second = "2";
     match multiply_new(first, second) {
@@ -68,7 +68,7 @@ struct CheckoutPayload {
 
 fn process_order(cart: &[Item]) -> HttpResponse  {
     let mut map = HASHMAP.lock().unwrap();
-    
+
 
     for cartitem in cart.iter() {
         match map.get_mut(cartitem.id.as_str()) {
@@ -84,7 +84,7 @@ fn process_order(cart: &[Item]) -> HttpResponse  {
                     scope.set_extra("inventory", to_value(&*map).unwrap());
                 });
 
-                
+
                 let message = format!("Not enough inventory for {}", cartitem.id);
                 println!("The entry for `0` is \"{:?}\".", message);
                 capture_failure_error(&failure::format_err!("Error: {}", message));
@@ -131,8 +131,8 @@ fn main() {
                         .allowed_origin("http://localhost:5000")
                         .allowed_methods(vec!["GET", "POST"])
                         .max_age(3600)
-                        .resource("/handled_new", |r| {
-                            r.get().with(handled_new)
+                        .resource("/handled", |r| {
+                            r.get().with(handled)
                         })
                         .resource("/unhandled", |r| {
                             r.get().f(fakedatabseapp)
