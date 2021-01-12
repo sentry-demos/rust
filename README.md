@@ -1,23 +1,34 @@
 ## Setup
 
-1. Install Rust (https://www.rust-lang.org/tools/install)
+Before begin — [Install Rust].
 
-#### Versions
+
+### Versions
+---
 this was tested on:
 
 | dependency    | version
 | ------------- |:-------------:|
-| Rust | 1.45.0 |
-| Cargo | 1.45.0 |
-| Actix-Web | 0.7.19 |
-| Sentry SDK | 0.19.0 |
+| Rust | `1.45.0` — `1.51.0-nightly` |
+| Cargo | `1.45.0` — `1.50.0` |
+| Actix-Web | `0.7.19` |
+| Sentry SDK | `0.19.0` |
 
 
-## Run
+### Using
+---
 
-1. go into the directory that has the Cargo.toml file in it
-2. run "cargo run"
-3. http://localhost:3001/handled
-4. http://localhost:3001/unhandled
-5. http://localhost:3001/checkout w/ payload from sentry-demos/react
+```bash
+# Export your DSN in terminal
+1. export DSN=http://acc950dd09ce430a875cda90c3e3d3ce@cicd1-sentry.example.com:9000/1
+2. cargo run
+```
 
+Follow the link below:
+
+1. http://localhost:3001/handled
+2. http://localhost:3001/unhandled
+3. http://localhost:3001/checkout w/ payload from sentry-demos/react
+
+
+ [Install Rust]: https://www.rust-lang.org/tools/install
